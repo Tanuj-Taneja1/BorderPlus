@@ -1,6 +1,6 @@
 import os
 from google import genai
-import whisper
+from google.genai import types
 import soundfile as sf
 import io
 from gtts import gTTS
@@ -8,11 +8,9 @@ import resampy
 import numpy as np
 from dotenv import load_dotenv
 
-
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 
-# Store chat session history globally for feedback context
 chat_session = None
 
 def start_chat_session():
@@ -24,20 +22,25 @@ def start_chat_session():
 
 def audio_to_text(audio_file):
     audio_bytes = audio_file['bytes']
-    
-    # Read WAV bytes into NumPy array (waveform) and sample rate
     audio_buffer = io.BytesIO(audio_bytes)
     waveform, sample_rate = sf.read(audio_buffer)
-    
-    model = whisper.load_model("base")
 
-    # Whisper expects 16 kHz audio
     if sample_rate != 16000:
         waveform = resampy.resample(waveform, sample_rate, 16000)
-    
-    # Whisper's log_mel_spectrogram expects np.ndarray float32 waveform
-    result = model.transcribe(waveform.astype(np.float32), language="de")
-    return result["text"]
+
+    audio_buffer_resampled = io.BytesIO()
+    sf.write(audio_buffer_resampled, waveform, 16000, format='WAV')
+    audio_bytes_resampled = audio_buffer_resampled.getvalue()
+
+    text_part = types.Part.from_text(text="Extract German speech from audio and output just the text")
+    audio_part = types.Part.from_bytes(data=audio_bytes_resampled, mime_type="audio/wav")
+    client = genai.Client(api_key=api_key)
+
+    response = client.models.generate_content(
+        model="gemini-2.0-flash", contents=[text_part, audio_part]
+    )
+
+    return response.text
 
 def english_to_german(text):
     client = genai.Client(api_key=api_key)
@@ -59,13 +62,11 @@ def get_similarity_and_feedback(expected, spoken, output_language="English", spo
     global chat_session
     chat_session = start_chat_session()
     
-    # Handle empty spoken input case
     if not spoken.strip():
         response_text = """Similarity: 0%
         Suggestion: It seems you didn't say anything. Please try recording your pronunciation again, speaking clearly into the microphone."""
         return response_text
     
-    # Construct prompt for chat session
     prompt = f"""
             You have to act as German language coach for Nurses learning German 
             Compare the expected sentence and the spoken sentence below.Try to be kind and helpfull and not too harsh in judgement 
