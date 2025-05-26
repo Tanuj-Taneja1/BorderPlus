@@ -29,7 +29,7 @@ def audio_to_text(audio_file):
     audio_buffer = io.BytesIO(audio_bytes)
     waveform, sample_rate = sf.read(audio_buffer)
     
-    model = whisper.load_model("medium")
+    model = whisper.load_model("base")
 
     # Whisper expects 16 kHz audio
     if sample_rate != 16000:
