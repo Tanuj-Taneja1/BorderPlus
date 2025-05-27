@@ -5,11 +5,11 @@ import os
 from streamlit_mic_recorder import mic_recorder
 
 PRESET_PHRASES = [
-    "Wie geht es Ihnen? - How are you?",
-    "Können Sie mir bitte helfen? - Can you please help me?",
-    "Wo haben Sie Schmerzen? - Where do you have pain?",
-    "Ich werde Ihren Blutdruck messen. - I will measure your blood pressure.",
-    "Bitte nehmen Sie Ihre Medikamente. - Please take your medication."
+    ("Wie geht es Ihnen?", "How are you?"),
+    ("Können Sie mir bitte helfen?", "Can you please help me?"),
+    ("Wo haben Sie Schmerzen?", "Where do you have pain?"),
+    ("Ich werde Ihren Blutdruck messen.", "I will measure your blood pressure."),
+    ("Bitte nehmen Sie Ihre Medikamente.", "Please take your medication.")
 ]
 
 def initialize_session_state():
@@ -37,12 +37,19 @@ def display_phrase_and_audio_section():
         input_method = st.radio("Choose input method:", ["Select Preset Phrase", "Enter Custom Phrase"], horizontal=True)
 
         if input_method == "Select Preset Phrase":
-            st.session_state.german_text = st.selectbox(
-                "Choose a phrase to practice:",
-                PRESET_PHRASES,
-                index=PRESET_PHRASES.index(st.session_state.selected_phrase),
-                key="phrase_select"
-            )
+            display_list = [f"{ger} - {eng}" for ger, eng in PRESET_PHRASES]
+            try:
+                current_phrase = f"{st.session_state.selected_phrase[0]} - {st.session_state.selected_phrase[1]}"
+                default_index = display_list.index(current_phrase)
+            except ValueError:
+                default_index = 0
+                st.session_state.selected_phrase = PRESET_PHRASES[0]
+
+            selected_str = st.selectbox("Choose a phrase to practice:", display_list, index=default_index, key="phrase_select")
+            selected_index = display_list.index(selected_str)
+            st.session_state.selected_phrase = PRESET_PHRASES[selected_index]
+            st.session_state.german_text = PRESET_PHRASES[selected_index][0]
+
         else:
             english_text = st.text_input(
                 "Enter an English phrase to translate:",
@@ -51,7 +58,9 @@ def display_phrase_and_audio_section():
             )
             if not english_text:
                 return
-            st.session_state.german_text = english_to_german(english_text)
+            translated = english_to_german(english_text)
+            st.session_state.german_text = translated
+            st.session_state.selected_phrase = ("", "")  # Avoid indexing error in preset list
 
         if not st.session_state.german_text:
             return
@@ -59,7 +68,6 @@ def display_phrase_and_audio_section():
         if st.button("Generate and Play Audio", use_container_width=True, key="generate_audio"):
             st.session_state.tts_ready = True
             st.session_state.generated_audio = text_to_audio(st.session_state.german_text)
-            st.session_state.selected_phrase = st.session_state.german_text
 
         if st.session_state.tts_ready:
             st.markdown(f"**German Phrase:** {st.session_state.german_text}")
