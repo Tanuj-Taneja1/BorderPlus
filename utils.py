@@ -7,9 +7,13 @@ from gtts import gTTS
 import resampy
 import numpy as np
 from dotenv import load_dotenv
+import streamlit as st
 
-load_dotenv()
-api_key = os.getenv("GEMINI_API_KEY")
+try:
+    api_key = st.secrets["GEMINI_API_KEY"]
+except:
+    load_dotenv()
+    api_key = os.getenv("GEMINI_API_KEY")
 
 chat_session = None
 
