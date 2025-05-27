@@ -56,16 +56,14 @@ def display_phrase_and_audio_section():
                 placeholder="For example: How are you feeling?",
                 key="english_input"
             )
-            if not english_text:
-                return
-            translated = english_to_german(english_text)
-            st.session_state.german_text = translated
-            st.session_state.selected_phrase = ("", "")  # Avoid indexing error in preset list
+            if english_text:
+                translated = english_to_german(english_text)
+                st.session_state.german_text = translated
+                st.session_state.selected_phrase = ("", "")  # Avoid indexing error in preset list
 
-        if not st.session_state.german_text:
-            return
-
-        if st.button("Generate and Play Audio", use_container_width=True, key="generate_audio"):
+        # ✅ Always show the button but disable if no German text
+        generate_disabled = not bool(st.session_state.german_text)
+        if st.button("Generate and Play Audio", use_container_width=True, disabled=generate_disabled, key="generate_audio"):
             st.session_state.tts_ready = True
             st.session_state.generated_audio = text_to_audio(st.session_state.german_text)
 
